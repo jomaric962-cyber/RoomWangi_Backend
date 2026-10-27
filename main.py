@@ -9,18 +9,20 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from threading import Thread
 
 # --- CONFIGURATION ---
-# Iyong Bot Token at Admin ID
+# Ang iyong Bot Token mula kay BotFather
 BOT_TOKEN = "8659816135:AAFx_xvixCvDurRkwGaCyAapm_wgmUyGs9Q"
-ADMIN_CHAT_ID = 8515760823
 DATABASE_FILE = "database.json"
 
 app = Flask(__name__)
 
-# Database helpers - Dito nakasave ang mga keys
+# Database helpers
 def load_db():
     if os.path.exists(DATABASE_FILE):
-        with open(DATABASE_FILE, "r") as f:
-            return json.load(f)
+        try:
+            with open(DATABASE_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {"keys": {}, "devices": {}}
     return {"keys": {}, "devices": {}}
 
 def save_db(data):
@@ -43,7 +45,7 @@ def verify_key():
     
     if user_key in db["keys"]:
         # Bind device if first time using the key
-        if db["keys"][user_key]["device"] == None:
+        if db["keys"][user_key].get("device") is None:
             db["keys"][user_key]["device"] = device_id
             save_db(db)
             
@@ -56,16 +58,13 @@ def verify_key():
 
 @app.route('/get_stats', methods=['GET'])
 def get_stats():
-    # Placeholder for the actual game data scraper
     return jsonify({"status": "success", "data": "Stats API Active"})
 
 # --- TELEGRAM BOT LOGIC ---
 async def start(update: Update, context):
-    await update.message.reply_text("Room Wangi Admin Active! Use /gen <tier>")
+    await update.message.reply_text("Room Wangi Admin Active!\nUse /gen <tier> (Example: /gen PERM)")
 
 async def gen_key(update: Update, context):
-    if update.effective_chat.id != ADMIN_CHAT_ID:
-        return
     try:
         tier = context.args[0].upper()
         key = generate_key(tier)
@@ -73,11 +72,10 @@ async def gen_key(update: Update, context):
         db["keys"][key] = {"tier": tier, "device": None}
         save_db(db)
         await update.message.reply_text(f"✅ Key Generated!\nKey: {key}\nTier: {tier}")
-    except:
-        await update.message.reply_text("Usage: /gen DAY7 or /gen PERM")
+    except (IndexError, Exception):
+        await update.message.reply_text("❌ Error! Use: /gen DAY7 or /gen PERM")
 
 def run_bot():
-    # Separate event loop for the bot thread
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     app_bot = Application.builder().token(BOT_TOKEN).build()
@@ -87,9 +85,14 @@ def run_bot():
 
 # --- START SERVER ---
 if __name__ == "__main__":
-    # Start Bot in a separate thread so Flask can run
-    bot_thread = Thread(target=run_bot)
+    # Bot runs in a background thread
+    bot_thread = Thread(target=run_bot, daemon=True)
     bot_thread.start()
     
-    # Start Flask 
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    # Flask server runs in the main thread
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host=' 
+
+    # NOTE: Gunicorn handles the server on Render, 
+    # so this block is mostly for local testing.
+    # On Render, gunicorn main:app ignores the __main__ block.
