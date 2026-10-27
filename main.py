@@ -72,4 +72,19 @@ async def gen_key(update: Update, context):
     if update.effective_chat.id != ADMIN_CHAT_ID:
         return
     
-    try:
+    try: 
+        tier = context.args[0].upper() # e.g., DAY7, PERM
+        key = generate_key(tier)
+        
+        db = load_db()
+        db["keys"][key] = {"tier": tier, "device": None}
+        save_db(db)
+        
+        await update.message.reply_text(f"✅ Key Generated!\nKey: {key}\nTier: {tier}")
+    except:
+        await update.message.reply_text("Usage: /gen DAY7 or /gen PERM")
+
+# --- SERVER START ---
+if __name__ == "__main__":
+    # For Render, we use Gunicorn, but for local testing, we use app.run
+    app.run(host='0.0.0.0', port=os.environ.get('PORT', 8080))
