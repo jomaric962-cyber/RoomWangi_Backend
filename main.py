@@ -5,37 +5,29 @@ import string
 import asyncio
 from flask import Flask, request, jsonify
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler
 from threading import Thread
 
-# --- CONFIGURATION ---
+# --- CONFIG ---
 BOT_TOKEN = "8659816135:AAFx_xvixCvDurRkwGaCyAapm_wgmUyGs9Q"
-ADMIN_CHAT_ID = 8659816135  # Iyong Chat ID
+ADMIN_CHAT_ID = 8659816135
 DATABASE_FILE = "database.json"
 
 app = Flask(__name__)
 
-# Database helpers
 def load_db():
     if os.path.exists(DATABASE_FILE):
         try:
-            with open(DATABASE_FILE, "r") as f:
-                return json.load(f)
-        except:
-            return {"keys": {}, "devices": {}}
+            with open(DATABASE_FILE, "r") as f: return json.load(f)
+        except: return {"keys": {}, "devices": {}}
     return {"keys": {}, "devices": {}}
 
 def save_db(data):
-    with open(DATABASE_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    with open(DATABASE_FILE, "w") as f: json.dump(data, f, indent=4)
 
-# --- KEY SYSTEM ---
 def generate_key(tier):
-    prefix = "MAR"
-    random_str = ''.join(random.choices(string.ascii_uppercase, k=6))
-    return f"{prefix}{random_str}"
+    return f"MAR{''.join(random.choices(string.ascii_uppercase, k=6))}"
 
-# --- API ENDPOINTS ---
 @app.route('/verify', methods=['POST'])
 def verify_key():
     data = request.json
@@ -55,13 +47,17 @@ def verify_key():
 def get_stats():
     return jsonify({"status": "success", "data": "Stats API Active"})
 
-# --- TELEGRAM BOT LOGIC ---
-async def start(update: Update, context):
-    await update.message.reply_text("Room Wangi Admin Active!\nUse /gen <tier> (Example: /gen PERM)")
+@app.route('/health', methods=['GET'])
+def health():
+    return "OK", 200
 
-async def gen_key(update: Update, context):
+# --- BOT ---
+async def start(update: Update, context):
+    await update.message.reply_text("Admin Active! /gen <tier>")
+
+async def gen_key_cmd(update: Update, context):
     if update.effective_chat.id != ADMIN_CHAT_ID:
-        await update.message.reply_text("❌ You are not the admin.")
+        await update.message.reply_text("❌ Not Admin")
         return
     try:
         tier = context.args[0].upper()
@@ -69,20 +65,20 @@ async def gen_key(update: Update, context):
         db = load_db()
         db["keys"][key] = {"tier": tier, "device": None}
         save_db(db)
-        await update.message.reply_text(f"✅ Key Generated!\nKey: {key}\nTier: {tier}")
-    except (IndexError, Exception):
-        await update.message.reply_text("❌ Error! Use: /gen DAY7 or /gen PERM")
+        await update.message.reply_text(f"✅ Key: {key}\nTier: {tier}")
+    except:
+        await update.message.reply_text("❌ Use: /gen PERM")
 
 def run_bot():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     app_bot = Application.builder().token(BOT_TOKEN).build()
     app_bot.add_handler(CommandHandler("start", start))
-    app_ bot.add_handler(CommandHandler("gen", gen_key))
+    app_bot.add_handler(CommandHandler("gen", gen_key_cmd))
     app_bot.run_polling()
 
 if __name__ == "__main__":
-    bot_thread = Thread(target=run_bot, daemon=True)
+    bot_thread  = Thread(target=run_bot, daemon=True)
     bot_thread.start()
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
