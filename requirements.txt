@@ -1,4 +1,0 @@
-flask
-python-telegram-bot
-requests
-gunicorn
